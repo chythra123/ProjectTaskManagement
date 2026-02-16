@@ -1,161 +1,232 @@
-# Project & Task Management System
+# Mini Resume Collector API
 
-Full-stack CRUD application built with **ASP.NET Core Web API (.NET 8)**, **Entity Framework Core**, **SQL Server**, and **Next.js (App Router) + TypeScript + Material UI**.
-
-## Folder Structure
-
-- `backend/ProjectTaskApi` – ASP.NET Core Web API
-- `frontend/` – Next.js (App Router) frontend
-- `database.sql` – SQL Server script for database and tables
+A REST API built with **FastAPI** that accepts candidate resume details, validates input, and stores data in memory. Supports resume upload (PDF/DOC/DOCX), listing with filters, get by ID, and delete.
 
 ---
 
-## 1. Database Setup (SQL Server)
+## Python version used
 
-1. Open **SQL Server Management Studio** (or any SQL Server client).
-2. Run the script in `database.sql`.
-
-This will:
-
-- Create the database `ProjectTaskDb` if it does not exist.
-- Create `Projects` and `Tasks` tables.
-- Add a few sample records.
-
-If you prefer a different database name or server:
-
-- Update the script accordingly.
-- Make sure the connection string in the backend matches the database.
+- **Python 3.10** or higher (3.11, 3.12 recommended)
 
 ---
 
-## 2. Backend (ASP.NET Core Web API)
+## Installation steps
 
-### 2.1. Prerequisites
+1. **Clone the repository** (or use this folder):
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/miniresume-your-full-name.git
+   cd miniresume-your-full-name
+   ```
 
-- .NET 8 SDK (or later that can target **net8.0**)
-- SQL Server running and accessible
+2. **Create a virtual environment** (recommended):
+   ```bash
+   python -m venv venv
+   # Windows
+   venv\Scripts\activate
+   # Linux/macOS
+   source venv/bin/activate
+   ```
 
-### 2.2. Configure Connection String
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-File: `backend/ProjectTaskApi/appsettings.json`
+---
 
+## Steps to run the application
+
+1. From the project root (where `main.py` is), run:
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. Open in browser:
+   - API docs (Swagger): **http://127.0.0.1:8000/docs**
+   - Health check: **http://127.0.0.1:8000/health**
+
+---
+
+## API endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/candidates` | Upload resume + metadata |
+| GET | `/candidates` | List candidates (optional filters: `skill`, `experience`, `graduation_year`) |
+| GET | `/candidates/{id}` | Get candidate by ID |
+| DELETE | `/candidates/{id}` | Delete candidate |
+
+---
+
+## Example API request / response
+
+### 1. Health check
+
+**Request:**
+```http
+GET /health HTTP/1.1
+Host: 127.0.0.1:8000
+```
+
+**Response (200 OK):**
 ```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=localhost;Database=ProjectTaskDb;Trusted_Connection=True;TrustServerCertificate=True;"
+{
+  "status": "ok"
 }
 ```
 
-Update:
+---
 
-- `Server=localhost` – change to your SQL Server instance name if needed.
-- `Trusted_Connection=True` – for Windows auth; use `User Id=...;Password=...;` for SQL auth.
+### 2. Upload a candidate (resume + metadata)
 
-### 2.3. Run the Backend
+**Request:** (multipart form-data; use Postman, curl, or Swagger UI at `/docs`)
 
-In a terminal at the repository root (`D:\Capstone`):
+```http
+POST /candidates HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
-```bash
-cd backend/ProjectTaskApi
-dotnet run
+------WebKitFormBoundary
+Content-Disposition: form-data; name="full_name"
+
+Jane Doe
+------WebKitFormBoundary
+Content-Disposition: form-data; name="dob"
+
+1995-06-15
+------WebKitFormBoundary
+Content-Disposition: form-data; name="contact_number"
+
++1-555-123-4567
+------WebKitFormBoundary
+Content-Disposition: form-data; name="contact_address"
+
+123 Main St, Chennai
+------WebKitFormBoundary
+Content-Disposition: form-data; name="education_qualification"
+
+B.Tech Computer Science
+------WebKitFormBoundary
+Content-Disposition: form-data; name="graduation_year"
+
+2017
+------WebKitFormBoundary
+Content-Disposition: form-data; name="years_of_experience"
+
+5.5
+------WebKitFormBoundary
+Content-Disposition: form-data; name="skill_set"
+
+Python, FastAPI, SQL
+------WebKitFormBoundary
+Content-Disposition: form-data; name="resume"; filename="jane_resume.pdf"
+Content-Type: application/pdf
+
+(binary PDF content)
+------WebKitFormBoundary--
 ```
 
-By default, the API will listen on:
+**Example with curl:**
+```bash
+curl -X POST "http://127.0.0.1:8000/candidates" \
+  -F "full_name=Jane Doe" \
+  -F "dob=1995-06-15" \
+  -F "contact_number=+1-555-123-4567" \
+  -F "contact_address=123 Main St, Chennai" \
+  -F "education_qualification=B.Tech Computer Science" \
+  -F "graduation_year=2017" \
+  -F "years_of_experience=5.5" \
+  -F "skill_set=Python, FastAPI, SQL" \
+  -F "resume=@/path/to/jane_resume.pdf"
+```
 
-- `https://localhost:5001` (HTTPS)
-- `http://localhost:5000` (HTTP)
-
-Make sure the **frontend** uses the same base URL (see `NEXT_PUBLIC_API_BASE_URL`).
-
-### 2.4. API Overview
-
-**Base URL:** `http://localhost:5000/api`
-
-#### Projects
-
-- `GET    /api/projects` – list all projects
-- `GET    /api/projects/{id}` – get single project (with tasks)
-- `POST   /api/projects` – create project
-- `PUT    /api/projects/{id}` – update project
-- `DELETE /api/projects/{id}` – delete project (cascades to tasks)
-
-#### Tasks
-
-- `GET    /api/projects/{projectId}/tasks` – list tasks for a project
-- `GET    /api/tasks/{id}` – get single task
-- `POST   /api/projects/{projectId}/tasks` – create task under project
-- `PUT    /api/tasks/{id}` – update task
-- `DELETE /api/tasks/{id}` – delete task
+**Response (200 OK):**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "full_name": "Jane Doe",
+  "dob": "1995-06-15",
+  "contact_number": "+1-555-123-4567",
+  "contact_address": "123 Main St, Chennai",
+  "education_qualification": "B.Tech Computer Science",
+  "graduation_year": 2017,
+  "years_of_experience": 5.5,
+  "skill_set": ["Python", "FastAPI", "SQL"],
+  "resume_filename": "jane_resume.pdf"
+}
+```
 
 ---
 
-## 3. Frontend (Next.js + TypeScript + MUI)
+### 3. List candidates (with optional filters)
 
-### 3.1. Prerequisites
-
-- Node.js **v22.x**
-- npm **>= 11.x**
-
-### 3.2. Configure API Base URL
-
-In `frontend/`, create a `.env.local` file:
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+**Request:**
+```http
+GET /candidates?skill=Python&experience=3&graduation_year=2017 HTTP/1.1
+Host: 127.0.0.1:8000
 ```
 
-This must match the backend base address from `dotnet run`.
-
-### 3.3. Install Dependencies
-
-From the repo root:
-
-```bash
-cd frontend
-npm install
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "full_name": "Jane Doe",
+    "dob": "1995-06-15",
+    "contact_number": "+1-555-123-4567",
+    "contact_address": "123 Main St, Chennai",
+    "education_qualification": "B.Tech Computer Science",
+    "graduation_year": 2017,
+    "years_of_experience": 5.5,
+    "skill_set": ["Python", "FastAPI", "SQL"],
+    "resume_filename": "jane_resume.pdf"
+  }
+]
 ```
-
-### 3.4. Run the Frontend
-
-```bash
-npm run dev
-```
-
-Then open `http://localhost:3000` in your browser.
-
-### 3.5. Frontend Pages
-
-- `/` – **Project list**
-  - Shows all projects
-  - Links to create project
-  - Links to edit a project
-  - Links to that project’s tasks
-- `/projects/new` – **Create Project**
-- `/projects/[id]/edit` – **Edit Project**
-- `/projects/[projectId]/tasks` – **Task list for a project**
-- `/projects/[projectId]/tasks/new` – **Create Task**
-- `/projects/[projectId]/tasks/[taskId]/edit` – **Edit Task**
-
-All data is loaded and saved using the **Fetch API** via a reusable helper:
-
-- `frontend/lib/api.ts`
 
 ---
 
-## 4. How Things Are Wired
+### 4. Get candidate by ID
 
-- Backend uses **Entity Framework Core** (`AppDbContext`) with SQL Server.
-- `ProjectsController` and `TasksController` implement the required REST endpoints.
-- CORS is enabled in `Program.cs` to allow `http://localhost:3000`.
-- Frontend uses **Material UI** for layout, forms, and tables.
-- All forms are simple and focus on the required CRUD behavior rather than visual design.
+**Request:**
+```http
+GET /candidates/a1b2c3d4-e5f6-7890-abcd-ef1234567890 HTTP/1.1
+Host: 127.0.0.1:8000
+```
+
+**Response (200 OK):** Same JSON object as in the list above.
+
+**Response (404 Not Found):**
+```json
+{
+  "detail": "Candidate not found"
+}
+```
 
 ---
 
-## 5. Quick Start Summary
+### 5. Delete candidate
 
-1. Run `database.sql` in SQL Server.
-2. Update and verify `appsettings.json` connection string.
-3. In `backend/ProjectTaskApi`: run `dotnet run`.
-4. In `frontend`: create `.env.local`, run `npm install`, then `npm run dev`.
-5. Open `http://localhost:3000` and test CRUD for Projects and Tasks.
+**Request:**
+```http
+DELETE /candidates/a1b2c3d4-e5f6-7890-abcd-ef1234567890 HTTP/1.1
+Host: 127.0.0.1:8000
+```
 
+**Response (200 OK):**
+```json
+{
+  "message": "Candidate deleted successfully"
+}
+```
+
+---
+
+## Project structure
+
+- `main.py` – FastAPI app (instance named `app`), all endpoints and in-memory storage
+- `requirements.txt` – Python dependencies
+- `README.md` – This file
+
+Data is stored **in memory** only; no database is required. Restarting the server clears all candidates.
